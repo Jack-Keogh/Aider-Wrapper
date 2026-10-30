@@ -1,10 +1,13 @@
 import json
 import os
+import queue
 import shlex
 import subprocess
 import sys
 import time
+import threading
 import webbrowser
+from codecs import getincrementaldecoder
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.error import URLError
@@ -31,6 +34,55 @@ def json_response(handler, status, payload):
     handler.send_header('Content-Length', str(len(body)))
     handler.end_headers()
     handler.wfile.write(body)
+
+
+def stream_event(handler, event, **payload):
+    body = (json.dumps({'event': event, **payload}, ensure_ascii=False) + '\n').encode('utf-8')
+    handler.wfile.write(body)
+    handler.wfile.flush()
+
+
+def stream_process_output(process, handler):
+    output_queue = queue.Queue()
+
+    def read_output():
+        try:
+            while True:
+                chunk = process.stdout.read(1)
+                if not chunk:
+                    break
+                output_queue.put(chunk)
+        finally:
+            output_queue.put(None)
+
+    reader = threading.Thread(target=read_output, daemon=True)
+    reader.start()
+    decoder = getincrementaldecoder('utf-8')('replace')
+    pending = []
+    finished = False
+    deadline = time.monotonic() + 600
+
+    while not finished:
+        if time.monotonic() >= deadline:
+            process.kill()
+            raise subprocess.TimeoutExpired(process.args, 600)
+        try:
+            chunk = output_queue.get(timeout=0.05)
+            if chunk is None:
+                finished = True
+            else:
+                pending.append(decoder.decode(chunk))
+        except queue.Empty:
+            pass
+
+        if pending and (finished or len(''.join(pending)) >= 128 or output_queue.empty()):
+            stream_event(handler, 'output', text=''.join(pending))
+            pending.clear()
+
+    remainder = decoder.decode(b'', final=True)
+    if remainder:
+        stream_event(handler, 'output', text=remainder)
+    return process.wait(timeout=5)
 
 
 def read_json(handler):
@@ -106,6 +158,9 @@ def build_aider_command(data):
         if data.get(flag):
             command.append('--' + flag.replace('_', '-'))
 
+    if not data.get('no_stream'):
+        command.append('--stream')
+
     edit_format = str(data.get('edit_format', '')).strip()
     if edit_format:
         command.extend(['--edit-format', edit_format])
@@ -153,28 +208,37 @@ class RequestHandler(SimpleHTTPRequestHandler):
             self.send_error(404, 'File not found')
             return
 
+        headers_sent = False
         try:
             command, directory = build_aider_command(read_json(self))
-            result = subprocess.run(
+            process = subprocess.Popen(
                 command,
                 cwd=directory,
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                errors='replace',
-                timeout=600,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                bufsize=0,
             )
-            json_response(self, 200, {
-                'command': command,
-                'returncode': result.returncode,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-            })
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/x-ndjson; charset=utf-8')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            headers_sent = True
+            stream_event(self, 'started', command=command)
+            returncode = stream_process_output(process, self)
+            stream_event(self, 'complete', returncode=returncode)
         except subprocess.TimeoutExpired:
-            json_response(self, 504, {'error': 'Aider timed out after 10 minutes'})
+            process.kill()
+            if headers_sent:
+                stream_event(self, 'error', error='Aider timed out after 10 minutes')
+            else:
+                json_response(self, 504, {'error': 'Aider timed out after 10 minutes'})
         except (FileNotFoundError, OSError) as error:
-            json_response(self, 500, {'error': f'Aider could not be started: {error}'})
+            if headers_sent:
+                return
+            else:
+                json_response(self, 500, {'error': f'Aider could not be started: {error}'})
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
             json_response(self, 400, {'error': str(error)})
 
