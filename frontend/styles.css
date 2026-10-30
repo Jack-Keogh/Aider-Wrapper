@@ -182,6 +182,69 @@ section {
     margin-bottom: 20px;
 }
 
+.session-state {
+    margin: 0 0 20px auto;
+    padding: 3px 9px;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    color: var(--muted-color);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.session-state.active {
+    border-color: rgba(192, 132, 252, 0.6);
+    color: var(--primary-bright);
+}
+
+.terminal-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 116px;
+    gap: 12px;
+}
+
+.terminal-layout pre {
+    min-width: 0;
+}
+
+.token-rail {
+    display: flex;
+    min-height: 320px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 14px 8px;
+    border: 1px solid rgba(91, 62, 134, 0.6);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(91, 42, 133, 0.3), rgba(38, 18, 68, 0.6));
+    color: var(--muted-color);
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.token-rail strong {
+    color: var(--light-color);
+    font-size: 1.65rem;
+    letter-spacing: -0.04em;
+}
+
+.token-label {
+    color: var(--primary-bright);
+}
+
+.token-breakdown {
+    display: grid;
+    gap: 4px;
+    margin-top: 12px;
+    color: var(--muted-color);
+    font-size: 0.7rem;
+    text-transform: none;
+}
+
 .terminal-dot {
     width: 9px;
     height: 9px;
@@ -287,6 +350,23 @@ button:active {
     width: auto;
     flex: 0 0 auto;
     white-space: nowrap;
+}
+
+.request-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.request-actions .secondary-button {
+    border-color: var(--border-bright);
+    background: rgba(91, 62, 134, 0.3);
+    color: var(--primary-bright);
+    box-shadow: none;
+}
+
+.request-actions .secondary-button:hover {
+    background: rgba(168, 85, 247, 0.2);
+    box-shadow: none;
 }
 
 .checks {
@@ -471,5 +551,25 @@ pre {
 
     .inline > button {
         width: 100%;
+    }
+
+    .request-actions {
+        flex-direction: column;
+    }
+
+    .terminal-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .token-rail {
+        min-height: 0;
+        flex-direction: row;
+        justify-content: space-around;
+    }
+
+    .token-breakdown {
+        display: flex;
+        gap: 10px;
+        margin-top: 0;
     }
 }

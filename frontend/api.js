@@ -41,3 +41,30 @@ export async function streamAider(payload, onEvent) {
         onEvent(JSON.parse(buffer));
     }
 }
+
+export function startSession(payload) {
+    return requestJson('/api/session/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+    });
+}
+
+export function sendPrompt(prompt) {
+    return requestJson('/api/session/prompt', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({prompt}),
+    });
+}
+
+export function stopSession() {
+    return requestJson('/api/session/stop', {method: 'POST'});
+}
+
+export function subscribeToSession(onEvent, onError) {
+    const source = new EventSource('/api/session/stream');
+    source.onmessage = (message) => onEvent(JSON.parse(message.data));
+    source.onerror = onError;
+    return () => source.close();
+}

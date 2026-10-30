@@ -30,9 +30,12 @@ auto-confirmation, commits, streaming, and file watching). The **Advanced Aider
 arguments** field accepts any additional Aider CLI arguments, so new Aider
 features do not require a launcher update.
 
-Aider runs stream newline-delimited JSON events to the browser. Output is
-appended to the output panel as Aider produces it, followed by a completion
-event containing the process exit code.
+Aider sessions stay open after the first prompt. The browser subscribes to
+`/api/session/stream` using server-sent events, while prompts are sent through
+`/api/session/prompt`; this lets multiple prompts reuse the same Aider process.
+The Request panel includes a stop control, and the terminal's token rail tracks
+sent, received, and total tokens for the current session. The older
+`/api/run` endpoint remains available for one-shot integrations.
 
 LM Studio model IDs are automatically sent to Aider with the required
 `openai/` provider prefix. Models that already include a provider prefix are

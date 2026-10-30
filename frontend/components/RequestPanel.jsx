@@ -8,7 +8,7 @@ const flags = [
     ['watch_files', 'Watch files'],
 ];
 
-export function RequestPanel({request, onChange, onRun, isOpen, onToggle}) {
+export function RequestPanel({request, onChange, onRun, onStop, isOpen, onToggle, sessionActive}) {
     return (
         <AccordionSection
             id="request"
@@ -43,7 +43,16 @@ export function RequestPanel({request, onChange, onRun, isOpen, onToggle}) {
                     </label>
                 ))}
             </div>
-            <button type="button" onClick={onRun}>Run Aider</button>
+            <div className="request-actions">
+                <button type="button" onClick={onRun}>
+                    {sessionActive ? 'Send prompt' : 'Start session'}
+                </button>
+                {sessionActive && (
+                    <button className="secondary-button" type="button" onClick={onStop}>
+                        Stop session
+                    </button>
+                )}
+            </div>
         </AccordionSection>
     );
 }

@@ -9,7 +9,7 @@ import time
 import threading
 import webbrowser
 from codecs import getincrementaldecoder
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import parse_qs, urlparse
@@ -149,7 +149,7 @@ def build_aider_command(data):
     prompt = str(data.get('prompt', '')).strip()
     files = [str(file).strip() for file in data.get('files', []) if str(file).strip()]
     raw_args = str(data.get('raw_args', '')).strip()
-    if not prompt:
+    if data.get('require_prompt', True) and not prompt:
         raise ValueError('A prompt is required')
     if not model:
         raise ValueError('Select an LM Studio model before running Aider')
@@ -184,10 +184,127 @@ def build_aider_command(data):
 
     if raw_args:
         command.extend(shlex.split(raw_args, posix=os.name != 'nt'))
-    command.extend(['--no-show-model-warnings', '--no-pretty', '--message', prompt])
+    command.extend(['--no-show-model-warnings', '--no-pretty'])
+    if prompt:
+        command.extend(['--message', prompt])
     command.extend(files)
 
     return command, directory
+
+
+class AiderSession:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.process = None
+        self.subscribers = set()
+        self.tokens = {'sent': 0, 'received': 0, 'total': 0}
+        self.command = None
+
+    def publish(self, event, **payload):
+        message = {'event': event, **payload}
+        for subscriber in list(self.subscribers):
+            subscriber.put(message)
+
+    def start(self, data):
+        self.stop()
+        command, directory = build_aider_command({**data, 'require_prompt': False, 'prompt': ''})
+        process = subprocess.Popen(
+            command,
+            cwd=directory,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env={**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8', 'TERM': 'dumb'},
+            bufsize=0,
+        )
+        with self.lock:
+            self.process = process
+            self.command = command
+            self.tokens = {'sent': 0, 'received': 0, 'total': 0}
+        threading.Thread(target=self.read_output, args=(process,), daemon=True).start()
+        self.publish('session_started', command=command)
+
+    def read_output(self, process):
+        decoder = getincrementaldecoder('utf-8')('replace')
+        buffer = ''
+        while True:
+            chunk = process.stdout.read(1)
+            if not chunk:
+                break
+            buffer += decoder.decode(chunk)
+            if len(buffer) >= 128 or buffer.endswith(('\n', '\r')):
+                text = remove_prompt_toolkit_warning(buffer)
+                if text:
+                    self.update_tokens(text)
+                    self.publish('output', text=text)
+                buffer = ''
+        remainder = remove_prompt_toolkit_warning(buffer + decoder.decode(b'', final=True))
+        if remainder:
+            self.update_tokens(remainder)
+            self.publish('output', text=remainder)
+        returncode = process.wait()
+        should_publish = False
+        with self.lock:
+            if self.process is process:
+                self.process = None
+                should_publish = True
+        if should_publish:
+            self.publish('session_ended', returncode=returncode)
+
+    def update_tokens(self, text):
+        match = re.search(r'Tokens:\s*([\d.]+[kKmM]?)\s*sent,\s*([\d.]+[kKmM]?)\s*received', text)
+        if not match:
+            return
+
+        def number(value):
+            multiplier = 1000 if value.lower().endswith('k') else 1000000 if value.lower().endswith('m') else 1
+            return int(float(value[:-1]) * multiplier) if multiplier > 1 else int(float(value))
+
+        sent = number(match.group(1))
+        received = number(match.group(2))
+        with self.lock:
+            self.tokens['sent'] += sent
+            self.tokens['received'] += received
+            self.tokens['total'] = self.tokens['sent'] + self.tokens['received']
+            tokens = dict(self.tokens)
+        self.publish('tokens', **tokens)
+
+    def send(self, prompt):
+        with self.lock:
+            process = self.process
+        if not process or process.poll() is not None:
+            raise RuntimeError('No active Aider session')
+        process.stdin.write((prompt.strip() + '\n').encode('utf-8'))
+        process.stdin.flush()
+        self.publish('prompt_sent')
+
+    def stop(self):
+        with self.lock:
+            process = self.process
+            self.process = None
+        if process and process.poll() is None:
+            process.stdin.write(b'/exit\n')
+            process.stdin.flush()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+    def subscribe(self):
+        subscriber = queue.Queue()
+        self.subscribers.add(subscriber)
+        with self.lock:
+            active = bool(self.process and self.process.poll() is None)
+            tokens = dict(self.tokens)
+        subscriber.put({'event': 'session_state', 'active': active})
+        subscriber.put({'event': 'tokens', **tokens})
+        return subscriber
+
+    def unsubscribe(self, subscriber):
+        self.subscribers.discard(subscriber)
+
+
+SESSION = AiderSession()
 
 
 class RequestHandler(SimpleHTTPRequestHandler):
@@ -196,6 +313,26 @@ class RequestHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/api/session/stream':
+            subscriber = SESSION.subscribe()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Connection', 'keep-alive')
+            self.end_headers()
+            try:
+                while True:
+                    try:
+                        event = subscriber.get(timeout=15)
+                        payload = json.dumps(event, ensure_ascii=False)
+                        self.wfile.write(f'data: {payload}\n\n'.encode('utf-8'))
+                    except queue.Empty:
+                        self.wfile.write(b': keepalive\n\n')
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                SESSION.unsubscribe(subscriber)
+            return
+
         if parsed.path == '/api/models':
             base_url = parse_qs(parsed.query).get('base_url', [DEFAULT_LM_STUDIO_URL])[0]
             try:
@@ -221,6 +358,34 @@ class RequestHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        if self.path == '/api/session/start':
+            try:
+                SESSION.start(read_json(self))
+                json_response(self, 200, {'active': True})
+            except (FileNotFoundError, OSError, RuntimeError) as error:
+                json_response(self, 500, {'error': str(error)})
+            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
+                json_response(self, 400, {'error': str(error)})
+            return
+
+        if self.path == '/api/session/prompt':
+            try:
+                prompt = str(read_json(self).get('prompt', '')).strip()
+                if not prompt:
+                    raise ValueError('A prompt is required')
+                SESSION.send(prompt)
+                json_response(self, 200, {'sent': True})
+            except (RuntimeError, ValueError) as error:
+                json_response(self, 409, {'error': str(error)})
+            except (TypeError, json.JSONDecodeError) as error:
+                json_response(self, 400, {'error': str(error)})
+            return
+
+        if self.path == '/api/session/stop':
+            SESSION.stop()
+            json_response(self, 200, {'active': False})
+            return
+
         if self.path != '/api/run':
             self.send_error(404, 'File not found')
             return
@@ -266,7 +431,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
             json_response(self, 400, {'error': str(error)})
 
 
-def run(server_class=HTTPServer, handler_class=RequestHandler, dev=False):
+def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler, dev=False):
     httpd = server_class(('', 8000), handler_class)
     vite_process = None
     if dev:

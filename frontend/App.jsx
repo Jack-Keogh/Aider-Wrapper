@@ -1,5 +1,12 @@
 import {useCallback, useEffect, useState} from 'react';
-import {browseDirectory, loadModels, streamAider} from './api.js';
+import {
+    browseDirectory,
+    loadModels,
+    sendPrompt,
+    startSession,
+    stopSession,
+    subscribeToSession,
+} from './api.js';
 import {DirectoryBrowser} from './components/DirectoryBrowser.jsx';
 import {ModelSettings} from './components/ModelSettings.jsx';
 import {OutputPanel} from './components/OutputPanel.jsx';
@@ -30,6 +37,8 @@ export function App() {
     });
     const [status, setStatus] = useState({message: 'Loading...', tone: ''});
     const [output, setOutput] = useState('');
+    const [tokens, setTokens] = useState({sent: 0, received: 0, total: 0});
+    const [sessionActive, setSessionActive] = useState(false);
     const [activePanel, setActivePanel] = useState('request');
 
     const browse = useCallback(async (path = directory) => {
@@ -65,6 +74,17 @@ export function App() {
     useEffect(() => {
         browse('');
         refreshModels();
+        return subscribeToSession((event) => {
+            if (event.event === 'session_state') setSessionActive(event.active);
+            if (event.event === 'session_started') {
+                setSessionActive(true);
+                setOutput('');
+                setTokens({sent: 0, received: 0, total: 0});
+            }
+            if (event.event === 'session_ended') setSessionActive(false);
+            if (event.event === 'output') setOutput((current) => current + event.text);
+            if (event.event === 'tokens') setTokens(event);
+        }, () => setStatus({message: 'Session stream disconnected', tone: 'error'}));
     }, []);
 
     function updateSetting(name, value) {
@@ -85,9 +105,8 @@ export function App() {
 
     async function handleRun() {
         setStatus({message: 'Running Aider...', tone: ''});
-        setOutput('');
         try {
-            await streamAider({
+            const config = {
                 directory,
                 model: settings.model,
                 base_url: settings.baseUrl,
@@ -97,22 +116,23 @@ export function App() {
                 raw_args: request.rawArgs,
                 files: files.split(/\r?\n/).map((file) => file.trim()).filter(Boolean),
                 ...request.flags,
-            }, (event) => {
-                if (event.event === 'output') {
-                    setOutput((current) => current + event.text);
-                }
-                if (event.event === 'complete') {
-                    setStatus({
-                        message: event.returncode === 0
-                            ? 'Aider completed successfully'
-                            : `Aider exited with code ${event.returncode}`,
-                        tone: event.returncode === 0 ? 'success' : 'error',
-                    });
-                }
-                if (event.event === 'error') {
-                    throw new Error(event.error);
-                }
-            });
+            };
+            if (!sessionActive) {
+                await startSession(config);
+                setSessionActive(true);
+            }
+            await sendPrompt(request.prompt);
+            setStatus({message: 'Prompt sent to Aider session', tone: 'success'});
+        } catch (error) {
+            setStatus({message: error.message, tone: 'error'});
+        }
+    }
+
+    async function handleStop() {
+        try {
+            await stopSession();
+            setSessionActive(false);
+            setStatus({message: 'Aider session stopped', tone: 'success'});
         } catch (error) {
             setStatus({message: error.message, tone: 'error'});
         }
@@ -146,11 +166,13 @@ export function App() {
                     request={request}
                     onChange={updateRequest}
                     onRun={handleRun}
+                    onStop={handleStop}
+                    sessionActive={sessionActive}
                     isOpen={activePanel === 'request'}
                     onToggle={() => setActivePanel(activePanel === 'request' ? '' : 'request')}
                 />
             </div>
-            <OutputPanel output={output} />
+            <OutputPanel output={output} tokens={tokens} sessionActive={sessionActive} />
         </>
     );
 }
