@@ -10,13 +10,7 @@ const flags = [
 
 export function RequestPanel({request, onChange, onRun, onStop, isOpen, onToggle, sessionActive}) {
     return (
-        <AccordionSection
-            id="request"
-            title="Request"
-            summary={request.prompt || 'Describe the change for Aider'}
-            isOpen={isOpen}
-            onToggle={onToggle}
-        >
+        <>
             <label htmlFor="prompt">Prompt</label>
             <textarea
                 id="prompt"
@@ -24,25 +18,33 @@ export function RequestPanel({request, onChange, onRun, onStop, isOpen, onToggle
                 placeholder="Describe the change or task for Aider"
                 onChange={(event) => onChange('prompt', event.target.value)}
             />
-            <label htmlFor="raw-args">Advanced Aider arguments (optional)</label>
-            <input
-                id="raw-args"
-                value={request.rawArgs}
-                placeholder="Example: --architect --reasoning-effort high"
-                onChange={(event) => onChange('rawArgs', event.target.value)}
-            />
-            <div className="checks">
-                {flags.map(([name, label]) => (
-                    <label key={name}>
-                        <input
-                            type="checkbox"
-                            checked={request.flags[name] || false}
-                            onChange={(event) => onChange(`flag:${name}`, event.target.checked)}
-                        />
-                        {label}
-                    </label>
-                ))}
-            </div>
+            <AccordionSection
+                id="request"
+                title="Request"
+                summary={request.prompt || 'Describe the change for Aider'}
+                isOpen={isOpen}
+                onToggle={onToggle}
+            >
+                <label htmlFor="raw-args">Advanced Aider arguments (optional)</label>
+                <input
+                    id="raw-args"
+                    value={request.rawArgs}
+                    placeholder="Example: --architect --reasoning-effort high"
+                    onChange={(event) => onChange('rawArgs', event.target.value)}
+                />
+                <div className="checks">
+                    {flags.map(([name, label]) => (
+                        <label key={name}>
+                            <input
+                                type="checkbox"
+                                checked={request.flags[name] || false}
+                                onChange={(event) => onChange(`flag:${name}`, event.target.checked)}
+                            />
+                            {label}
+                        </label>
+                    ))}
+                </div>
+            </AccordionSection>
             <div className="request-actions">
                 <button type="button" onClick={onRun}>
                     {sessionActive ? 'Send prompt' : 'Start session'}
@@ -53,7 +55,7 @@ export function RequestPanel({request, onChange, onRun, onStop, isOpen, onToggle
                     </button>
                 )}
             </div>
-        </AccordionSection>
+        </>
     );
 }
 import {AccordionSection} from './AccordionSection.jsx';
