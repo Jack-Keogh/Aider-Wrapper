@@ -8,20 +8,13 @@ const flags = [
     ['watch_files', 'Watch files'],
 ];
 
-export function RequestPanel({request, onChange, onRun, onStop, isOpen, onToggle, sessionActive}) {
+export function RequestPanel({request, onChange, isOpen, onToggle}) {
     return (
         <>
-            <label htmlFor="prompt">Prompt</label>
-            <textarea
-                id="prompt"
-                value={request.prompt}
-                placeholder="Describe the change or task for Aider"
-                onChange={(event) => onChange('prompt', event.target.value)}
-            />
             <AccordionSection
                 id="request"
                 title="Request"
-                summary={request.prompt || 'Describe the change for Aider'}
+                summary="Configure Aider options"
                 isOpen={isOpen}
                 onToggle={onToggle}
             >
@@ -45,16 +38,6 @@ export function RequestPanel({request, onChange, onRun, onStop, isOpen, onToggle
                     ))}
                 </div>
             </AccordionSection>
-            <div className="request-actions">
-                <button type="button" onClick={onRun}>
-                    {sessionActive ? 'Send prompt' : 'Start session'}
-                </button>
-                {sessionActive && (
-                    <button className="secondary-button" type="button" onClick={onStop}>
-                        Stop session
-                    </button>
-                )}
-            </div>
         </>
     );
 }

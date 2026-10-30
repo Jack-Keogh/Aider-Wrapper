@@ -10,6 +10,7 @@ import {
 import {DirectoryBrowser} from './components/DirectoryBrowser.jsx';
 import {ModelSettings} from './components/ModelSettings.jsx';
 import {OutputPanel} from './components/OutputPanel.jsx';
+import {PromptEditor} from './components/PromptEditor.jsx';
 import {RequestPanel} from './components/RequestPanel.jsx';
 import {StatusMessage} from './components/StatusMessage.jsx';
 
@@ -165,14 +166,22 @@ export function App() {
                 <RequestPanel
                     request={request}
                     onChange={updateRequest}
-                    onRun={handleRun}
-                    onStop={handleStop}
-                    sessionActive={sessionActive}
                     isOpen={activePanel === 'request'}
                     onToggle={() => setActivePanel(activePanel === 'request' ? '' : 'request')}
                 />
+                <PromptEditor
+                    value={request.prompt}
+                    onChange={(value) => updateRequest('prompt', value)}
+                    onRun={handleRun}
+                    sessionActive={sessionActive}
+                />
             </div>
-            <OutputPanel output={output} tokens={tokens} sessionActive={sessionActive} />
+            <OutputPanel
+                output={output}
+                tokens={tokens}
+                sessionActive={sessionActive}
+                onStop={handleStop}
+            />
         </>
     );
 }

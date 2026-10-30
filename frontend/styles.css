@@ -182,8 +182,23 @@ section {
     margin-bottom: 20px;
 }
 
-.session-state {
+.terminal-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
     margin: 0 0 20px auto;
+}
+
+.terminal-actions button {
+    width: auto;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.session-state {
+    margin: 0;
     padding: 3px 9px;
     border: 1px solid var(--border-color);
     border-radius: 999px;
@@ -202,6 +217,33 @@ section {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 116px;
     gap: 12px;
+}
+
+.prompt-editor {
+    margin: 0;
+    padding: 18px 20px 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(33, 22, 59, 0.96), rgba(25, 17, 45, 0.96));
+    box-shadow: 0 15px 32px var(--shadow-color);
+}
+
+.prompt-editor label {
+    margin-top: 0;
+}
+
+.prompt-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.prompt-actions button {
+    width: auto;
+    min-height: 34px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
 }
 
 .terminal-layout pre {
@@ -352,19 +394,14 @@ button:active {
     white-space: nowrap;
 }
 
-.request-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.request-actions .secondary-button {
+.terminal-actions .secondary-button {
     border-color: var(--border-bright);
     background: rgba(91, 62, 134, 0.3);
     color: var(--primary-bright);
     box-shadow: none;
 }
 
-.request-actions .secondary-button:hover {
+.terminal-actions .secondary-button:hover {
     background: rgba(168, 85, 247, 0.2);
     box-shadow: none;
 }
@@ -553,8 +590,22 @@ pre {
         width: 100%;
     }
 
-    .request-actions {
-        flex-direction: column;
+    .terminal-heading {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .terminal-heading h2 {
+        margin-bottom: 10px;
+    }
+
+    .terminal-actions {
+        width: 100%;
+        margin: 0 0 14px;
+    }
+
+    .terminal-actions button {
+        flex: 1;
     }
 
     .terminal-layout {
