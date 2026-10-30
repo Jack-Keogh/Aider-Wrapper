@@ -14,7 +14,7 @@ from codecs import getincrementaldecoder
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import URLError
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlparse, urlsplit
 from urllib.request import Request, urlopen
 
 if hasattr(sys.stdout, 'reconfigure'):
