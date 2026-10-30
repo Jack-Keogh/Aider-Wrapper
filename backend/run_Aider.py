@@ -148,6 +148,8 @@ def validate_model_url(base_url):
         raise ValueError('base_url hostname could not be resolved') from error
     if not addresses:
         raise ValueError('base_url hostname could not be resolved')
+    if all(address.is_loopback for address in addresses):
+        return
     for address in addresses:
         if (
             address.is_private

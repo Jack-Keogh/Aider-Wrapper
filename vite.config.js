@@ -24,7 +24,7 @@ export default defineConfig({
   root: resolve(__dirname, 'frontend'),
   server: {
     proxy: {
-      '/api/': 'http://localhost:8000'
+      '/api/': 'http://127.0.0.1:8000'
     }
   },
   build: {
