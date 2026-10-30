@@ -47,6 +47,14 @@ The configured LM Studio base URL should normally be:
 http://localhost:1234/v1
 ```
 
+## Project structure
+
+- `backend/run_Aider.py` serves the built frontend and provides the Aider and
+  LM Studio API.
+- `frontend/` contains the React/Vite application.
+- `vite.config.js` configures the frontend build and development API proxy.
+- `package.json` contains the frontend scripts and dependencies.
+
 ## Frontend structure
 
 The frontend is a React component tree under `frontend/`:

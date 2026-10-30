@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "python run_Aider.py --dev",
+    "dev": "python backend/run_Aider.py --dev",
     "build": "vite build",
     "serve": "vite preview",
-    "start": "python run_Aider.py"
+    "start": "python backend/run_Aider.py"
   },
   "dependencies": {
     "react": "^18.2.0",
