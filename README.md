@@ -26,3 +26,15 @@ The configured LM Studio base URL should normally be:
 ```text
 http://localhost:1234/v1
 ```
+
+## Frontend structure
+
+The frontend is a React component tree under `frontend/`:
+
+- `App.jsx` owns shared launcher state and coordinates the API.
+- `components/DirectoryBrowser.jsx` handles target directories and files.
+- `components/ModelSettings.jsx` handles LM Studio connection and model selection.
+- `components/RequestPanel.jsx` handles prompts and Aider flags.
+- `components/OutputPanel.jsx` and `components/StatusMessage.jsx` render results.
+- `api.js` contains the HTTP client functions.
+- `main.jsx` is the React entry point and `styles.css` contains shared styling.

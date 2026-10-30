@@ -4,88 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aider Launcher</title>
-    <style>
-        :root { color-scheme: dark; font-family: system-ui, sans-serif; }
-        body { max-width: 1100px; margin: 0 auto; padding: 24px; background: #15171a; color: #e8eaed; }
-        h1 { margin-top: 0; }
-        .grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr); gap: 16px; }
-        section { background: #202327; border: 1px solid #363a40; border-radius: 8px; padding: 16px; }
-        label { display: block; margin: 12px 0 6px; color: #b7bdc8; }
-        input, select, textarea, button { box-sizing: border-box; width: 100%; padding: 9px; border: 1px solid #4b515b; border-radius: 5px; background: #15171a; color: inherit; }
-        textarea { min-height: 100px; resize: vertical; }
-        button { cursor: pointer; background: #2e6bdc; border-color: #3c7bea; margin-top: 10px; }
-        button:hover { filter: brightness(1.15); }
-        .inline { display: flex; gap: 8px; align-items: end; }
-        .inline > * { flex: 1; }
-        .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-        .checks label { margin: 0; }
-        .checks input { width: auto; margin-right: 6px; }
-        #directory-list { max-height: 220px; overflow: auto; margin-top: 10px; }
-        .entry { display: block; text-align: left; background: transparent; border: 0; margin: 0; }
-        .directory { color: #8ab4f8; }
-        #status { min-height: 24px; margin: 12px 0; }
-        .success { color: #81c995; }
-        .error { color: #f28b82; }
-        pre { white-space: pre-wrap; min-height: 180px; background: #101113; padding: 12px; overflow: auto; }
-        @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-    </style>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <h1>Aider Launcher</h1>
-    <div id="status">Loading...</div>
-    <div class="grid">
-        <section>
-            <h2>Target</h2>
-            <label for="directory">Working directory</label>
-            <div class="inline">
-                <input id="directory" placeholder="Choose a project directory">
-                <button id="browse" type="button">Browse</button>
-            </div>
-            <div id="directory-list"></div>
-            <label for="files">Files to add (one path per line)</label>
-            <textarea id="files" placeholder="Click files above or enter paths relative to the working directory"></textarea>
-        </section>
-        <section>
-            <h2>LM Studio</h2>
-            <label for="base-url">OpenAI-compatible base URL</label>
-            <div class="inline">
-                <input id="base-url" value="http://localhost:1234/v1">
-                <button id="load-models" type="button">Load models</button>
-            </div>
-            <label for="model">Model</label>
-            <input id="model" list="model-options" placeholder="Select or enter a model">
-            <datalist id="model-options"></datalist>
-            <label for="api-key">API key</label>
-            <input id="api-key" value="lm-studio">
-            <label for="edit-format">Edit format</label>
-            <select id="edit-format">
-                <option value="">Aider default</option>
-                <option value="diff">diff</option>
-                <option value="whole">whole</option>
-                <option value="udiff">udiff</option>
-                <option value="ask">ask</option>
-            </select>
-        </section>
-    </div>
-    <section>
-        <h2>Request</h2>
-        <label for="prompt">Prompt</label>
-        <textarea id="prompt" placeholder="Describe the change or task for Aider"></textarea>
-        <label for="raw-args">Advanced Aider arguments (optional)</label>
-        <input id="raw-args" placeholder="Example: --architect --reasoning-effort high">
-        <div class="checks">
-            <label><input type="checkbox" data-flag="yes_always"> Auto-confirm changes</label>
-            <label><input type="checkbox" data-flag="no_auto_commits"> Disable auto commits</label>
-            <label><input type="checkbox" data-flag="dirty_commits"> Allow dirty commits</label>
-            <label><input type="checkbox" data-flag="attribute_author"> Attribute author</label>
-            <label><input type="checkbox" data-flag="attribute_committer"> Attribute committer</label>
-            <label><input type="checkbox" data-flag="no_stream"> Disable streaming</label>
-            <label><input type="checkbox" data-flag="watch_files"> Watch files</label>
-        </div>
-        <button id="run" type="button">Run Aider</button>
-        <h2>Output</h2>
-        <pre id="output"></pre>
-    </section>
-    <script type="module" src="app.js"></script>
+    <main id="root"></main>
+    <script type="module" src="/main.jsx"></script>
 </body>
 </html>
