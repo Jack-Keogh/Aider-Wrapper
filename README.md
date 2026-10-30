@@ -2,6 +2,8 @@
 
 Aider UI is a local web interface for interacting with the Aider tool. It provides functionalities such as handling JSON responses, streaming events, and managing sessions.
 
+![Aider UI screenshot](assets/aider-ui.png)
+
 ## Features
 
 - **JSON Response Handling**: Easily handle JSON data from different sources.
