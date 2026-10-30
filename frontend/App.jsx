@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
-import {browseDirectory, loadModels, runAider} from './api.js';
+import {browseDirectory, loadModels, streamAider} from './api.js';
 import {DirectoryBrowser} from './components/DirectoryBrowser.jsx';
 import {ModelSettings} from './components/ModelSettings.jsx';
 import {OutputPanel} from './components/OutputPanel.jsx';
@@ -86,7 +86,7 @@ export function App() {
         setStatus({message: 'Running Aider...', tone: ''});
         setOutput('');
         try {
-            const result = await runAider({
+            await streamAider({
                 directory,
                 model: settings.model,
                 base_url: settings.baseUrl,
@@ -96,13 +96,21 @@ export function App() {
                 raw_args: request.rawArgs,
                 files: files.split(/\r?\n/).map((file) => file.trim()).filter(Boolean),
                 ...request.flags,
-            });
-            setOutput([result.stdout, result.stderr].filter(Boolean).join('\n'));
-            setStatus({
-                message: result.returncode === 0
-                    ? 'Aider completed successfully'
-                    : `Aider exited with code ${result.returncode}`,
-                tone: result.returncode === 0 ? 'success' : 'error',
+            }, (event) => {
+                if (event.event === 'output') {
+                    setOutput((current) => current + event.text);
+                }
+                if (event.event === 'complete') {
+                    setStatus({
+                        message: event.returncode === 0
+                            ? 'Aider completed successfully'
+                            : `Aider exited with code ${event.returncode}`,
+                        tone: event.returncode === 0 ? 'success' : 'error',
+                    });
+                }
+                if (event.event === 'error') {
+                    throw new Error(event.error);
+                }
             });
         } catch (error) {
             setStatus({message: error.message, tone: 'error'});

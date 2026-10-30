@@ -15,10 +15,26 @@ export function browseDirectory(path) {
     return requestJson(`/api/browse?path=${encodeURIComponent(path)}`);
 }
 
-export function runAider(payload) {
-    return requestJson('/api/run', {
+export async function streamAider(payload, onEvent) {
+    const response = await fetch('/api/run', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
     });
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Aider could not be started');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+        const {value, done} = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), {stream: !done});
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        lines.filter(Boolean).forEach((line) => onEvent(JSON.parse(line)));
+        if (done) break;
+    }
 }
