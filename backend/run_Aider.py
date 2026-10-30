@@ -23,6 +23,7 @@ if hasattr(sys.stderr, 'reconfigure'):
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DIST_DIR = PROJECT_ROOT / 'dist'
 DEFAULT_LM_STUDIO_URL = 'http://localhost:1234/v1'
+READY_SILENCE_SECONDS = 1.0
 
 local_bin = Path.home() / '.local' / 'bin'
 os.environ['PATH'] = str(local_bin) + os.pathsep + os.environ['PATH']
@@ -199,6 +200,9 @@ class AiderSession:
         self.subscribers = set()
         self.tokens = {'sent': 0, 'received': 0, 'total': 0}
         self.command = None
+        self.ready = False
+        self.output_seen = False
+        self.last_output_at = None
 
     def publish(self, event, **payload):
         message = {'event': event, **payload}
@@ -221,7 +225,11 @@ class AiderSession:
             self.process = process
             self.command = command
             self.tokens = {'sent': 0, 'received': 0, 'total': 0}
+            self.ready = False
+            self.output_seen = False
+            self.last_output_at = None
         threading.Thread(target=self.read_output, args=(process,), daemon=True).start()
+        threading.Thread(target=self.wait_until_ready, args=(process,), daemon=True).start()
         self.publish('session_started', command=command)
 
     def read_output(self, process):
@@ -231,7 +239,12 @@ class AiderSession:
             chunk = process.stdout.read(1)
             if not chunk:
                 break
-            buffer += decoder.decode(chunk)
+            decoded = decoder.decode(chunk)
+            buffer += decoded
+            with self.lock:
+                if self.process is process:
+                    self.output_seen = True
+                    self.last_output_at = time.monotonic()
             if len(buffer) >= 128 or buffer.endswith(('\n', '\r')):
                 text = remove_prompt_toolkit_warning(buffer)
                 if text:
@@ -247,9 +260,27 @@ class AiderSession:
         with self.lock:
             if self.process is process:
                 self.process = None
+                self.ready = False
                 should_publish = True
         if should_publish:
             self.publish('session_ended', returncode=returncode)
+
+    def wait_until_ready(self, process):
+        while True:
+            time.sleep(0.1)
+            with self.lock:
+                if self.process is not process or process.poll() is not None:
+                    return
+                silent_since = self.last_output_at
+                ready = self.ready
+                output_seen = self.output_seen
+            if not ready and output_seen and silent_since is not None:
+                if time.monotonic() - silent_since >= READY_SILENCE_SECONDS:
+                    with self.lock:
+                        if self.process is process and not self.ready:
+                            self.ready = True
+                            self.publish('session_ready')
+                    return
 
     def update_tokens(self, text):
         match = re.search(r'Tokens:\s*([\d.]+[kKmM]?)\s*sent,\s*([\d.]+[kKmM]?)\s*received', text)
@@ -272,8 +303,11 @@ class AiderSession:
     def send(self, prompt):
         with self.lock:
             process = self.process
+            ready = self.ready
         if not process or process.poll() is not None:
             raise RuntimeError('No active Aider session')
+        if not ready:
+            raise RuntimeError('Aider is still warming up')
         process.stdin.write((prompt.strip() + '\n').encode('utf-8'))
         process.stdin.flush()
         self.publish('prompt_sent')
@@ -282,6 +316,9 @@ class AiderSession:
         with self.lock:
             process = self.process
             self.process = None
+            self.ready = False
+            self.output_seen = False
+            self.last_output_at = None
         if process and process.poll() is None:
             process.stdin.write(b'/exit\n')
             process.stdin.flush()
@@ -294,7 +331,7 @@ class AiderSession:
         subscriber = queue.Queue()
         self.subscribers.add(subscriber)
         with self.lock:
-            active = bool(self.process and self.process.poll() is None)
+            active = bool(self.process and self.process.poll() is None and self.ready)
             tokens = dict(self.tokens)
         subscriber.put({'event': 'session_state', 'active': active})
         subscriber.put({'event': 'tokens', **tokens})

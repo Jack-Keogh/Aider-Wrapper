@@ -41,6 +41,7 @@ export function App() {
     const [tokens, setTokens] = useState({sent: 0, received: 0, total: 0});
     const [sessionActive, setSessionActive] = useState(false);
     const [sessionStarting, setSessionStarting] = useState(false);
+    const [promptProcessing, setPromptProcessing] = useState(false);
     const [activePanel, setActivePanel] = useState('request');
 
     const browse = useCallback(async (path = directory) => {
@@ -79,17 +80,24 @@ export function App() {
         return subscribeToSession((event) => {
             if (event.event === 'session_state') setSessionActive(event.active);
             if (event.event === 'session_started') {
-                setSessionActive(true);
-                setSessionStarting(false);
                 setOutput('');
                 setTokens({sent: 0, received: 0, total: 0});
+            }
+            if (event.event === 'session_ready') {
+                setSessionActive(true);
+                setSessionStarting(false);
+                setStatus({message: 'Aider session ready', tone: 'success'});
             }
             if (event.event === 'session_ended') {
                 setSessionActive(false);
                 setSessionStarting(false);
+                setPromptProcessing(false);
             }
             if (event.event === 'output') setOutput((current) => current + event.text);
-            if (event.event === 'tokens') setTokens(event);
+            if (event.event === 'tokens') {
+                setTokens(event);
+                setPromptProcessing(false);
+            }
         }, () => setStatus({message: 'Session stream disconnected', tone: 'error'}));
     }, []);
 
@@ -129,12 +137,14 @@ export function App() {
                 setStatus({message: 'Warming up Aider session...', tone: ''});
                 return false;
             }
+            setPromptProcessing(true);
             await sendPrompt(request.prompt);
             setRequest((current) => ({...current, prompt: ''}));
             setStatus({message: 'Prompt sent to Aider session', tone: 'success'});
             return true;
         } catch (error) {
             setSessionStarting(false);
+            setPromptProcessing(false);
             setStatus({message: error.message, tone: 'error'});
             return false;
         }
@@ -145,6 +155,7 @@ export function App() {
             await stopSession();
             setSessionActive(false);
             setSessionStarting(false);
+            setPromptProcessing(false);
             setStatus({message: 'Aider session stopped', tone: 'success'});
         } catch (error) {
             setStatus({message: error.message, tone: 'error'});
@@ -187,6 +198,7 @@ export function App() {
                     onRun={handleRun}
                     sessionActive={sessionActive}
                     sessionStarting={sessionStarting}
+                    promptProcessing={promptProcessing}
                 />
             </div>
             <OutputPanel

@@ -246,6 +246,15 @@ section {
     white-space: nowrap;
 }
 
+.prompt-actions button:disabled {
+    border-color: var(--border-color);
+    background: var(--surface-raised);
+    color: var(--muted-color);
+    box-shadow: none;
+    cursor: wait;
+    transform: none;
+}
+
 .terminal-layout pre {
     min-width: 0;
 }

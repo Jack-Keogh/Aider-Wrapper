@@ -1,6 +1,13 @@
 import { useState } from 'react';
 
-export function PromptEditor({ value, onChange, onRun, sessionActive, sessionStarting }) {
+export function PromptEditor({
+    value,
+    onChange,
+    onRun,
+    sessionActive,
+    sessionStarting,
+    promptProcessing,
+}) {
     const [promptSent, setPromptSent] = useState(false);
     const [lastPrompt, setLastPrompt] = useState('');
 
@@ -27,12 +34,15 @@ export function PromptEditor({ value, onChange, onRun, sessionActive, sessionSta
                 value={value}
                 placeholder={promptSent ? lastPrompt : 'Describe the change or task for Aider'}
                 onChange={handleInputChange}
-                disabled={sessionStarting}
                 style={{ opacity: promptSent ? 0.5 : 1 }}
             />
             <div className="prompt-actions">
-                <button type="button" onClick={handleRun} disabled={sessionStarting}>
-                    {sessionStarting ? 'Warming up' : sessionActive ? 'Send prompt' : 'Start session'}
+                <button
+                    type="button"
+                    onClick={handleRun}
+                    disabled={sessionStarting || promptProcessing}
+                >
+                    {sessionStarting ? 'Warming up' : promptProcessing ? 'Processing' : sessionActive ? 'Send prompt' : 'Start session'}
                 </button>
             </div>
         </div>
