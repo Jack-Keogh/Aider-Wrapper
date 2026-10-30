@@ -7,6 +7,8 @@ export function DirectoryBrowser({
     files,
     onFilesChange,
 }) {
+    const selectedFiles = files.split(/\r?\n/).map((file) => file.trim()).filter(Boolean);
+
     return (
         <section>
             <h2>Target</h2>
@@ -44,6 +46,21 @@ export function DirectoryBrowser({
                 ))}
             </div>
             <label htmlFor="files">Files to add (one path per line)</label>
+            <div className="selected-files">
+                {selectedFiles.map((file) => (
+                    <div className="selected-file" key={file}>
+                        <span title={file}>{file}</span>
+                        <button
+                            type="button"
+                            className="remove-file"
+                            aria-label={`Remove ${file}`}
+                            onClick={() => onFilesChange(selectedFiles.filter((item) => item !== file))}
+                        >
+                            X
+                        </button>
+                    </div>
+                ))}
+            </div>
             <textarea
                 id="files"
                 value={files}

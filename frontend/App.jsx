@@ -24,7 +24,10 @@ export function App() {
         apiKey: 'lm-studio',
         editFormat: '',
     });
-    const [request, setRequest] = useState(initialRequest);
+    const [request, setRequest] = useState({
+        ...initialRequest,
+        flags: {yes_always: true},
+    });
     const [status, setStatus] = useState({message: 'Loading...', tone: ''});
     const [output, setOutput] = useState('');
 
@@ -43,6 +46,12 @@ export function App() {
         try {
             const data = await loadModels(settings.baseUrl);
             setModels(data.models);
+            if (data.models.length > 0) {
+                setSettings((current) => ({
+                    ...current,
+                    model: current.model || data.models[0],
+                }));
+            }
             setStatus({message: `${data.models.length} model(s) available`, tone: 'success'});
         } catch {
             setStatus({

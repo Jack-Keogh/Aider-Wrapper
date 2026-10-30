@@ -2,12 +2,19 @@ import json
 import os
 import shlex
 import subprocess
+import sys
+import time
 import webbrowser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DIST_DIR = PROJECT_ROOT / 'dist'
@@ -18,7 +25,7 @@ os.environ['PATH'] = str(local_bin) + os.pathsep + os.environ['PATH']
 
 
 def json_response(handler, status, payload):
-    body = json.dumps(payload).encode('utf-8')
+    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Content-Length', str(len(body)))
@@ -49,18 +56,36 @@ def resolve_directory(value):
     return directory
 
 
+def normalize_model(model):
+    if model and '/' not in model:
+        return f'openai/{model}'
+    return model
+
+
+def wait_for_vite():
+    for _ in range(60):
+        try:
+            with urlopen('http://localhost:5173/', timeout=1):
+                return
+        except OSError:
+            time.sleep(0.25)
+    raise RuntimeError('Vite did not become ready on http://localhost:5173')
+
+
 def build_aider_command(data):
     directory = resolve_directory(data.get('directory'))
-    model = str(data.get('model', '')).strip()
+    model = normalize_model(str(data.get('model', '')).strip())
     base_url = str(data.get('base_url', DEFAULT_LM_STUDIO_URL)).strip().rstrip('/')
     api_key = str(data.get('api_key', 'lm-studio')).strip()
     prompt = str(data.get('prompt', '')).strip()
     files = [str(file).strip() for file in data.get('files', []) if str(file).strip()]
     raw_args = str(data.get('raw_args', '')).strip()
+    if not prompt:
+        raise ValueError('A prompt is required')
+    if not model:
+        raise ValueError('Select an LM Studio model before running Aider')
 
-    command = ['aider']
-    if model:
-        command.extend(['--model', model])
+    command = ['aider', '--model', model]
     if base_url:
         command.extend(['--openai-api-base', base_url])
     if api_key:
@@ -87,9 +112,8 @@ def build_aider_command(data):
 
     if raw_args:
         command.extend(shlex.split(raw_args, posix=os.name != 'nt'))
+    command.extend(['--no-show-model-warnings', '--no-pretty', '--message', prompt])
     command.extend(files)
-    if prompt:
-        command.append(prompt)
 
     return command, directory
 
@@ -139,6 +163,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
                 text=True,
                 encoding='utf-8',
                 errors='replace',
+                timeout=600,
             )
             json_response(self, 200, {
                 'command': command,
@@ -146,21 +171,45 @@ class RequestHandler(SimpleHTTPRequestHandler):
                 'stdout': result.stdout,
                 'stderr': result.stderr,
             })
+        except subprocess.TimeoutExpired:
+            json_response(self, 504, {'error': 'Aider timed out after 10 minutes'})
         except (FileNotFoundError, OSError) as error:
             json_response(self, 500, {'error': f'Aider could not be started: {error}'})
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
             json_response(self, 400, {'error': str(error)})
 
 
-def run(server_class=HTTPServer, handler_class=RequestHandler):
+def run(server_class=HTTPServer, handler_class=RequestHandler, dev=False):
     httpd = server_class(('', 8000), handler_class)
-    print('Starting Aider launcher at http://localhost:8000')
-    webbrowser.open('http://localhost:8000')
-    httpd.serve_forever()
+    vite_process = None
+    if dev:
+        vite_command = PROJECT_ROOT / 'node_modules' / '.bin' / (
+            'vite.cmd' if os.name == 'nt' else 'vite'
+        )
+        vite_process = subprocess.Popen(
+            [str(vite_command), '--host', 'localhost'],
+            cwd=PROJECT_ROOT,
+            env=os.environ.copy(),
+        )
+        wait_for_vite()
+        print('Starting Aider launcher in development mode at http://localhost:5173')
+        webbrowser.open(f'http://localhost:5173/index.html?dev={time.time_ns()}')
+    else:
+        print('Starting Aider launcher at http://localhost:8000')
+        webbrowser.open('http://localhost:8000')
+    try:
+        httpd.serve_forever()
+    finally:
+        if vite_process:
+            vite_process.terminate()
 
 
 if __name__ == '__main__':
-    DIST_DIR.mkdir(exist_ok=True)
-    npm_command = 'npm.cmd' if os.name == 'nt' else 'npm'
-    subprocess.run([npm_command, 'run', 'build'], cwd=PROJECT_ROOT, check=True)
-    run()
+    os.environ.setdefault('PYTHONUTF8', '1')
+    os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+    dev_mode = '--dev' in os.sys.argv
+    if not dev_mode:
+        DIST_DIR.mkdir(exist_ok=True)
+        npm_command = 'npm.cmd' if os.name == 'nt' else 'npm'
+        subprocess.run([npm_command, 'run', 'build'], cwd=PROJECT_ROOT, check=True)
+    run(dev=dev_mode)

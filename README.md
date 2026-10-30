@@ -14,12 +14,25 @@ The launcher opens at <http://localhost:8000>. It builds the frontend, discovers
 models from LM Studio's OpenAI-compatible `/v1/models` endpoint, lets you browse
 to a working directory, and runs Aider in that directory.
 
+For frontend development with hot reload:
+
+```powershell
+npm run dev
+```
+
+This starts Vite on <http://localhost:5173> and the launcher API on port 8000;
+Vite proxies `/api` requests to the launcher automatically.
+
 ## Aider options
 
 The launcher exposes common Aider settings (model, edit format, files, prompt,
 auto-confirmation, commits, streaming, and file watching). The **Advanced Aider
 arguments** field accepts any additional Aider CLI arguments, so new Aider
 features do not require a launcher update.
+
+LM Studio model IDs are automatically sent to Aider with the required
+`openai/` provider prefix. Models that already include a provider prefix are
+left unchanged.
 
 The configured LM Studio base URL should normally be:
 

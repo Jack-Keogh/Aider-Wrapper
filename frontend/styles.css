@@ -16,6 +16,10 @@ button:hover { filter: brightness(1.15); }
 #directory-list { max-height: 220px; overflow: auto; margin-top: 10px; }
 .entry { display: block; text-align: left; background: transparent; border: 0; margin: 0; }
 .directory { color: #8ab4f8; }
+.selected-files { margin: 8px 0; }
+.selected-file { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.selected-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.selected-file .remove-file { width: auto; margin: 0; padding: 3px 8px; background: #8b2f36; border-color: #b23b45; }
 #status { min-height: 24px; margin: 12px 0; }
 .success { color: #81c995; }
 .error { color: #f28b82; }
