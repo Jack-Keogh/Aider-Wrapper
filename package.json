@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "start": "python ../run_Aider.py"
+    "start": "python run_Aider.py"
   },
   "dependencies": {
     "react": "^18.2.0",
