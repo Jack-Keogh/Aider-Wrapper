@@ -2,4 +2,7 @@
     --dark-color: #15171a;
     --secondary-color: #202327;
     --light-color: #e8eaed;
+    --primary-color: #61dafb; /* Added primary color */
+    --success-color: #4caf50; /* Added success color */
+    --danger-color: #f44336; /* Added danger color */
 }
