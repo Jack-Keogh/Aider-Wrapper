@@ -1,68 +1,48 @@
-# WBoard
+# Aider UI
 
-WBoard is a local web launcher for Aider and LM Studio.
+Aider UI is a local web interface for interacting with the Aider tool. It provides functionalities such as handling JSON responses, streaming events, and managing sessions.
 
-## Run
+## Features
 
-From the repository root:
+- **JSON Response Handling**: Easily handle JSON data from different sources.
+- **Event Streaming**: Stream real-time events to subscribers.
+- **Session Management**: Manage user sessions efficiently.
+- **Model Interaction**: Interact with models through API endpoints.
+- **Directory Resolution**: Resolve directories and their contents.
+- **Token Normalization**: Normalize tokens for better management.
 
-```powershell
-npm start
-```
+## Usage
 
-The launcher opens at <http://localhost:8000>. It builds the frontend, discovers
-models from LM Studio's OpenAI-compatible `/v1/models` endpoint, lets you browse
-to a working directory, and runs Aider in that directory.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/aider-ui.git
+   ```
 
-For frontend development with hot reload:
+2. Navigate to the project directory:
+   ```bash
+   cd aider-ui
+   ```
 
-```powershell
-npm run dev
-```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-This starts Vite on <http://localhost:5173> and the launcher API on port 8000;
-Vite proxies `/api` requests to the launcher automatically.
+4. Run the application:
+   ```bash
+   python backend/run_Aider.py
+   ```
 
-## Aider options
+## Contributing
 
-The launcher exposes common Aider settings (model, edit format, files, prompt,
-auto-confirmation, commits, streaming, and file watching). The **Advanced Aider
-arguments** field accepts any additional Aider CLI arguments, so new Aider
-features do not require a launcher update.
+Contributions are welcome! Please follow these guidelines:
 
-Aider sessions stay open after the first prompt. The browser subscribes to
-`/api/session/stream` using server-sent events, while prompts are sent through
-`/api/session/prompt`; this lets multiple prompts reuse the same Aider process.
-The Request panel includes a stop control, and the terminal's token rail tracks
-sent, received, and total tokens for the current session. The older
-`/api/run` endpoint remains available for one-shot integrations.
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Commit your changes.
+4. Push to your forked repository.
+5. Open a pull request.
 
-LM Studio model IDs are automatically sent to Aider with the required
-`openai/` provider prefix. Models that already include a provider prefix are
-left unchanged.
+## License
 
-The configured LM Studio base URL should normally be:
-
-```text
-http://localhost:1234/v1
-```
-
-## Project structure
-
-- `backend/run_Aider.py` serves the built frontend and provides the Aider and
-  LM Studio API.
-- `frontend/` contains the React/Vite application.
-- `vite.config.js` configures the frontend build and development API proxy.
-- `package.json` contains the frontend scripts and dependencies.
-
-## Frontend structure
-
-The frontend is a React component tree under `frontend/`:
-
-- `App.jsx` owns shared launcher state and coordinates the API.
-- `components/DirectoryBrowser.jsx` handles target directories and files.
-- `components/ModelSettings.jsx` handles LM Studio connection and model selection.
-- `components/RequestPanel.jsx` handles prompts and Aider flags.
-- `components/OutputPanel.jsx` and `components/StatusMessage.jsx` render results.
-- `api.js` contains the HTTP client functions.
-- `main.jsx` is the React entry point and `styles.css` contains shared styling.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
