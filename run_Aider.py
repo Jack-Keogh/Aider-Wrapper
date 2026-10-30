@@ -24,7 +24,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            with open(os.path.join('frontend', 'index.html'), 'rb') as file:
+            with open(os.path.join('dist', 'index.html'), 'rb') as file:
                 self.wfile.write(file.read())
         else:
             self.send_error(404, "File not found")
@@ -63,4 +63,8 @@ def run(server_class=HTTPServer, handler_class=RequestHandler):
     httpd.serve_forever()
 
 if __name__ == '__main__':
+    # Start Vite development server
+    vite_process = subprocess.Popen(['npm', 'run', 'dev'], cwd='vite-react-aider')
+
+    # Start HTTP server
     run()
