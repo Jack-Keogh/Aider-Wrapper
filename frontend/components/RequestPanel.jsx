@@ -8,10 +8,15 @@ const flags = [
     ['watch_files', 'Watch files'],
 ];
 
-export function RequestPanel({request, onChange, onRun}) {
+export function RequestPanel({request, onChange, onRun, isOpen, onToggle}) {
     return (
-        <section>
-            <h2>Request</h2>
+        <AccordionSection
+            id="request"
+            title="Request"
+            summary={request.prompt || 'Describe the change for Aider'}
+            isOpen={isOpen}
+            onToggle={onToggle}
+        >
             <label htmlFor="prompt">Prompt</label>
             <textarea
                 id="prompt"
@@ -39,6 +44,7 @@ export function RequestPanel({request, onChange, onRun}) {
                 ))}
             </div>
             <button type="button" onClick={onRun}>Run Aider</button>
-        </section>
+        </AccordionSection>
     );
 }
+import {AccordionSection} from './AccordionSection.jsx';

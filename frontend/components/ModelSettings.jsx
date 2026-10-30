@@ -1,3 +1,5 @@
+import {AccordionSection} from './AccordionSection.jsx';
+
 export function ModelSettings({
     baseUrl,
     model,
@@ -6,10 +8,17 @@ export function ModelSettings({
     editFormat,
     onChange,
     onLoadModels,
+    isOpen,
+    onToggle,
 }) {
     return (
-        <section>
-            <h2>LM Studio</h2>
+        <AccordionSection
+            id="lm-studio"
+            title="LM Studio"
+            summary={model || 'Configure connection and model'}
+            isOpen={isOpen}
+            onToggle={onToggle}
+        >
             <label htmlFor="base-url">OpenAI-compatible base URL</label>
             <div className="inline">
                 <input
@@ -48,6 +57,6 @@ export function ModelSettings({
                 <option value="udiff">udiff</option>
                 <option value="ask">ask</option>
             </select>
-        </section>
+        </AccordionSection>
     );
 }

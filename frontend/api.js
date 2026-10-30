@@ -27,7 +27,7 @@ export async function streamAider(payload, onEvent) {
     }
 
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+    const decoder = new TextDecoder('utf-8');
     let buffer = '';
     while (true) {
         const {value, done} = await reader.read();
@@ -36,5 +36,8 @@ export async function streamAider(payload, onEvent) {
         buffer = lines.pop();
         lines.filter(Boolean).forEach((line) => onEvent(JSON.parse(line)));
         if (done) break;
+    }
+    if (buffer.trim()) {
+        onEvent(JSON.parse(buffer));
     }
 }

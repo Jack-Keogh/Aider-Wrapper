@@ -1,7 +1,10 @@
 export function OutputPanel({output}) {
     return (
-        <section>
-            <h2>Output</h2>
+        <section className="terminal-panel">
+            <div className="terminal-heading">
+                <span className="terminal-dot" aria-hidden="true" />
+                <h2>Terminal output</h2>
+            </div>
             <pre id="output">{output}</pre>
         </section>
     );

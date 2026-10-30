@@ -1,6 +1,7 @@
 import json
 import os
 import queue
+import re
 import shlex
 import subprocess
 import sys
@@ -42,6 +43,14 @@ def stream_event(handler, event, **payload):
     handler.wfile.flush()
 
 
+def remove_prompt_toolkit_warning(text):
+    return re.sub(
+        r"Can't initialize prompt toolkit: No Windows console found\. Are you running\s*|cmd\.exe\?\s*|Detected dumb terminal, disabling fancy input and pretty output\.\s*",
+        '',
+        text,
+    )
+
+
 def stream_process_output(process, handler):
     output_queue = queue.Queue()
 
@@ -59,6 +68,7 @@ def stream_process_output(process, handler):
     reader.start()
     decoder = getincrementaldecoder('utf-8')('replace')
     pending = []
+    filter_buffer = ''
     finished = False
     deadline = time.monotonic() + 600
 
@@ -71,7 +81,10 @@ def stream_process_output(process, handler):
             if chunk is None:
                 finished = True
             else:
-                pending.append(decoder.decode(chunk))
+                filter_buffer += decoder.decode(chunk)
+                lines = filter_buffer.splitlines(keepends=True)
+                filter_buffer = '' if not lines or lines[-1].endswith(('\n', '\r')) else lines.pop()
+                pending.append(remove_prompt_toolkit_warning(''.join(lines)))
         except queue.Empty:
             pass
 
@@ -80,8 +93,12 @@ def stream_process_output(process, handler):
             pending.clear()
 
     remainder = decoder.decode(b'', final=True)
-    if remainder:
-        stream_event(handler, 'output', text=remainder)
+    filter_buffer += remainder
+    filter_buffer = remove_prompt_toolkit_warning(filter_buffer)
+    if filter_buffer:
+        pending.append(filter_buffer)
+    if pending:
+        stream_event(handler, 'output', text=''.join(pending))
     return process.wait(timeout=5)
 
 
@@ -216,6 +233,12 @@ class RequestHandler(SimpleHTTPRequestHandler):
                 cwd=directory,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                env={
+                    **os.environ,
+                    'PYTHONUTF8': '1',
+                    'PYTHONIOENCODING': 'utf-8',
+                    'TERM': 'dumb',
+                },
                 bufsize=0,
             )
 

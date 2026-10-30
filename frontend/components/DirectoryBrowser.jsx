@@ -1,3 +1,5 @@
+import {AccordionSection} from './AccordionSection.jsx';
+
 export function DirectoryBrowser({
     directory,
     parent,
@@ -6,12 +8,19 @@ export function DirectoryBrowser({
     onBrowse,
     files,
     onFilesChange,
+    isOpen,
+    onToggle,
 }) {
     const selectedFiles = files.split(/\r?\n/).map((file) => file.trim()).filter(Boolean);
 
     return (
-        <section>
-            <h2>Target</h2>
+        <AccordionSection
+            id="target"
+            title="Target"
+            summary={directory || 'Choose a working directory'}
+            isOpen={isOpen}
+            onToggle={onToggle}
+        >
             <label htmlFor="directory">Working directory</label>
             <div className="inline">
                 <input
@@ -67,6 +76,6 @@ export function DirectoryBrowser({
                 placeholder="Click files above or enter paths relative to the working directory"
                 onChange={(event) => onFilesChange(event.target.value)}
             />
-        </section>
+        </AccordionSection>
     );
 }

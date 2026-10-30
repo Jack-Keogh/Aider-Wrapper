@@ -30,6 +30,7 @@ export function App() {
     });
     const [status, setStatus] = useState({message: 'Loading...', tone: ''});
     const [output, setOutput] = useState('');
+    const [activePanel, setActivePanel] = useState('request');
 
     const browse = useCallback(async (path = directory) => {
         try {
@@ -121,7 +122,7 @@ export function App() {
         <>
             <h1>Aider Launcher</h1>
             <StatusMessage {...status} />
-            <div className="grid">
+            <div className="accordion-stack">
                 <DirectoryBrowser
                     directory={directory}
                     parent={parent}
@@ -130,15 +131,25 @@ export function App() {
                     onBrowse={browse}
                     files={files}
                     onFilesChange={(value) => setFiles(Array.isArray(value) ? value.join('\n') : value)}
+                    isOpen={activePanel === 'target'}
+                    onToggle={() => setActivePanel(activePanel === 'target' ? '' : 'target')}
                 />
                 <ModelSettings
                     {...settings}
                     models={models}
                     onChange={updateSetting}
                     onLoadModels={refreshModels}
+                    isOpen={activePanel === 'lm-studio'}
+                    onToggle={() => setActivePanel(activePanel === 'lm-studio' ? '' : 'lm-studio')}
+                />
+                <RequestPanel
+                    request={request}
+                    onChange={updateRequest}
+                    onRun={handleRun}
+                    isOpen={activePanel === 'request'}
+                    onToggle={() => setActivePanel(activePanel === 'request' ? '' : 'request')}
                 />
             </div>
-            <RequestPanel request={request} onChange={updateRequest} onRun={handleRun} />
             <OutputPanel output={output} />
         </>
     );
