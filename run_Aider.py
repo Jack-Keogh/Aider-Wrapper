@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import json  # Importing the json module
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import webbrowser
 
