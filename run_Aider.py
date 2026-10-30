@@ -63,6 +63,13 @@ def run(server_class=HTTPServer, handler_class=RequestHandler):
     httpd.serve_forever()
 
 if __name__ == '__main__':
+    # Ensure Vite is installed
+    try:
+        subprocess.run(['npm', 'install'], cwd='vite-react-aider', check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install Vite: {e}")
+        sys.exit(1)
+
     # Start Vite development server
     vite_process = subprocess.Popen(['npm', 'run', 'dev'], cwd='vite-react-aider')
 
