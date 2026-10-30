@@ -1,8 +1,10 @@
 import json
+import ipaddress
 import os
 import queue
 import re
 import shlex
+import socket
 import subprocess
 import sys
 import time
@@ -12,7 +14,7 @@ from codecs import getincrementaldecoder
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import URLError
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -24,6 +26,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DIST_DIR = PROJECT_ROOT / 'dist'
 DEFAULT_LM_STUDIO_URL = 'http://localhost:1234/v1'
 READY_SILENCE_SECONDS = 1.0
+DEFAULT_BIND_HOST = '127.0.0.1'
+REMOTE_ACCESS_FLAG = 'WBOARD_ALLOW_REMOTE_ACCESS'
+MODEL_HOST_ALLOWLIST = {
+    host.strip().lower()
+    for host in os.environ.get('WBOARD_MODEL_HOST_ALLOWLIST', '').split(',')
+    if host.strip()
+}
 
 local_bin = Path.home() / '.local' / 'bin'
 os.environ['PATH'] = str(local_bin) + os.pathsep + os.environ['PATH']
@@ -112,7 +121,47 @@ def model_endpoint(base_url):
     return base_url.rstrip('/') + '/models'
 
 
+def validate_model_url(base_url):
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {'http', 'https'} or not parsed.hostname:
+        raise ValueError('base_url must be an http or https URL')
+    if parsed.username or parsed.password or parsed.fragment:
+        raise ValueError('base_url must not contain credentials or a fragment')
+    try:
+        port = parsed.port
+    except ValueError as error:
+        raise ValueError('base_url contains an invalid port') from error
+    if port is not None and not 1 <= port <= 65535:
+        raise ValueError('base_url contains an invalid port')
+
+    hostname = parsed.hostname.rstrip('.').lower()
+    if hostname in {'localhost', 'localhost.localdomain'}:
+        return
+    if MODEL_HOST_ALLOWLIST and hostname not in MODEL_HOST_ALLOWLIST:
+        raise ValueError('base_url hostname is not on the configured allowlist')
+    try:
+        addresses = {
+            ipaddress.ip_address(result[4][0])
+            for result in socket.getaddrinfo(hostname, port or (443 if parsed.scheme == 'https' else 80))
+        }
+    except (OSError, ValueError) as error:
+        raise ValueError('base_url hostname could not be resolved') from error
+    if not addresses:
+        raise ValueError('base_url hostname could not be resolved')
+    for address in addresses:
+        if (
+            address.is_private
+            or address.is_link_local
+            or address.is_loopback
+            or address.is_reserved
+            or address.is_multicast
+            or address.is_unspecified
+        ):
+            raise ValueError('base_url must not target a private, local, or reserved network')
+
+
 def list_models(base_url):
+    validate_model_url(base_url)
     request = Request(model_endpoint(base_url), headers={'Accept': 'application/json'})
     with urlopen(request, timeout=5) as response:
         payload = json.loads(response.read().decode('utf-8'))
@@ -132,6 +181,41 @@ def normalize_model(model):
     return model
 
 
+def process_environment(data):
+    environment = {
+        **os.environ,
+        'PYTHONUTF8': '1',
+        'PYTHONIOENCODING': 'utf-8',
+        'TERM': 'dumb',
+    }
+    api_key = str(data.get('api_key', 'lm-studio')).strip()
+    if api_key:
+        environment['OPENAI_API_KEY'] = api_key
+    return environment
+
+
+def safe_command(command):
+    redacted = []
+    secret_flags = {
+        '--api-key',
+        '--openai-api-key',
+        '--azure-api-key',
+        '--anthropic-api-key',
+    }
+    redact_next = False
+    for argument in command:
+        if redact_next:
+            redacted.append('[REDACTED]')
+            redact_next = False
+        elif any(argument.startswith(f'{flag}=') for flag in secret_flags):
+            redacted.append(argument.split('=', 1)[0] + '=[REDACTED]')
+        else:
+            redacted.append(argument)
+        if argument in secret_flags:
+            redact_next = True
+    return redacted
+
+
 def wait_for_vite():
     for _ in range(60):
         try:
@@ -146,7 +230,6 @@ def build_aider_command(data):
     directory = resolve_directory(data.get('directory'))
     model = normalize_model(str(data.get('model', '')).strip())
     base_url = str(data.get('base_url', DEFAULT_LM_STUDIO_URL)).strip().rstrip('/')
-    api_key = str(data.get('api_key', 'lm-studio')).strip()
     prompt = str(data.get('prompt', '')).strip()
     files = [str(file).strip() for file in data.get('files', []) if str(file).strip()]
     raw_args = str(data.get('raw_args', '')).strip()
@@ -158,9 +241,6 @@ def build_aider_command(data):
     command = ['aider', '--model', model]
     if base_url:
         command.extend(['--openai-api-base', base_url])
-    if api_key:
-        command.extend(['--openai-api-key', api_key])
-
     for flag in (
         'yes_always',
         'auto_commits',
@@ -218,19 +298,19 @@ class AiderSession:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            env={**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8', 'TERM': 'dumb'},
+            env=process_environment(data),
             bufsize=0,
         )
         with self.lock:
             self.process = process
-            self.command = command
+            self.command = safe_command(command)
             self.tokens = {'sent': 0, 'received': 0, 'total': 0}
             self.ready = False
             self.output_seen = False
             self.last_output_at = None
         threading.Thread(target=self.read_output, args=(process,), daemon=True).start()
         threading.Thread(target=self.wait_until_ready, args=(process,), daemon=True).start()
-        self.publish('session_started', command=command)
+        self.publish('session_started', command=safe_command(command))
 
     def read_output(self, process):
         decoder = getincrementaldecoder('utf-8')('replace')
@@ -374,7 +454,9 @@ class RequestHandler(SimpleHTTPRequestHandler):
             base_url = parse_qs(parsed.query).get('base_url', [DEFAULT_LM_STUDIO_URL])[0]
             try:
                 json_response(self, 200, {'models': list_models(base_url)})
-            except (OSError, URLError, ValueError, json.JSONDecodeError) as error:
+            except ValueError as error:
+                json_response(self, 400, {'error': str(error)})
+            except (OSError, URLError, json.JSONDecodeError) as error:
                 json_response(self, 502, {'error': f'Unable to load models from LM Studio: {error}'})
             return
 
@@ -429,18 +511,14 @@ class RequestHandler(SimpleHTTPRequestHandler):
 
         headers_sent = False
         try:
-            command, directory = build_aider_command(read_json(self))
+            request_data = read_json(self)
+            command, directory = build_aider_command(request_data)
             process = subprocess.Popen(
                 command,
                 cwd=directory,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                env={
-                    **os.environ,
-                    'PYTHONUTF8': '1',
-                    'PYTHONIOENCODING': 'utf-8',
-                    'TERM': 'dumb',
-                },
+                env=process_environment(request_data),
                 bufsize=0,
             )
 
@@ -450,7 +528,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
             self.send_header('Connection', 'close')
             self.end_headers()
             headers_sent = True
-            stream_event(self, 'started', command=command)
+            stream_event(self, 'started', command=safe_command(command))
             returncode = stream_process_output(process, self)
             stream_event(self, 'complete', returncode=returncode)
         except subprocess.TimeoutExpired:
@@ -469,7 +547,20 @@ class RequestHandler(SimpleHTTPRequestHandler):
 
 
 def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler, dev=False):
-    httpd = server_class(('', 8000), handler_class)
+    bind_host = os.environ.get('WBOARD_BIND_HOST', DEFAULT_BIND_HOST).strip() or DEFAULT_BIND_HOST
+    remote_enabled = os.environ.get(REMOTE_ACCESS_FLAG, '').strip().lower() in {'1', 'true', 'yes'}
+    try:
+        bind_address = ipaddress.ip_address(bind_host)
+        is_loopback = bind_address.is_loopback
+    except ValueError:
+        is_loopback = bind_host.lower() == 'localhost'
+    if not is_loopback and not remote_enabled:
+        print(
+            f'{REMOTE_ACCESS_FLAG} is not enabled; refusing non-local bind host '
+            f'{bind_host!r} and using {DEFAULT_BIND_HOST}'
+        )
+        bind_host = DEFAULT_BIND_HOST
+    httpd = server_class((bind_host, 8000), handler_class)
     vite_process = None
     if dev:
         vite_command = PROJECT_ROOT / 'node_modules' / '.bin' / (
@@ -484,7 +575,7 @@ def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler, dev=Fals
         print('Starting Aider launcher in development mode at http://localhost:5173')
         webbrowser.open(f'http://localhost:5173/index.html?dev={time.time_ns()}')
     else:
-        print('Starting Aider launcher at http://localhost:8000')
+        print(f'Starting Aider launcher at http://{bind_host}:8000')
         webbrowser.open('http://localhost:8000')
     try:
         httpd.serve_forever()
