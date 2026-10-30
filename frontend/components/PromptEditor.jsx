@@ -24,7 +24,7 @@ export function PromptEditor({ value, onChange, onRun, sessionActive }) {
                 <button type="button" onClick={() => {
                     onRun();
                     setPromptSent(true);
-                }}>
+                }} disabled={!sessionActive}>
                     {sessionActive ? 'Send prompt' : 'Start session'}
                 </button>
             </div>
