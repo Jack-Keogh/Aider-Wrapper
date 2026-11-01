@@ -5,7 +5,7 @@
 }
 
 html {
-    min-width: 320px;
+    min-width: 0;
     background: var(--darkest-color);
 }
 
@@ -21,6 +21,7 @@ body {
     color: var(--light-color);
     font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     line-height: 1.5;
+    overflow-x: hidden;
 }
 
 body::before {
@@ -257,6 +258,219 @@ section {
 
 .terminal-layout pre {
     min-width: 0;
+}
+
+@media (max-width: 500px) {
+    body {
+        padding: 18px 10px 24px;
+    }
+
+    h1 {
+        margin-bottom: 5px;
+        font-size: 1.65rem;
+    }
+
+    h1::after {
+        width: 54px;
+        height: 3px;
+        margin-top: 9px;
+    }
+
+    section {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 11px;
+    }
+
+    section::before {
+        left: 10px;
+        right: 10px;
+    }
+
+    .accordion-stack {
+        gap: 6px;
+    }
+
+    .accordion-section {
+        border-radius: 9px;
+    }
+
+    .accordion-trigger {
+        gap: 8px;
+        min-height: 46px;
+        padding: 8px 10px;
+    }
+
+    .accordion-title {
+        font-size: 0.88rem;
+    }
+
+    .accordion-summary {
+        max-width: 65vw;
+        font-size: 0.68rem;
+    }
+
+    .accordion-chevron {
+        font-size: 1.1rem;
+    }
+
+    .accordion-content-inner {
+        padding: 0 10px;
+    }
+
+    .accordion-section.is-open .accordion-content-inner {
+        padding-bottom: 10px;
+    }
+
+    label {
+        margin: 10px 0 4px;
+        font-size: 0.69rem;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+        min-height: 34px;
+        padding: 7px 9px;
+        border-radius: 7px;
+        font-size: 0.78rem;
+    }
+
+    textarea {
+        min-height: 76px;
+    }
+
+    .inline {
+        gap: 5px;
+    }
+
+    .inline > button {
+        padding-right: 7px;
+        padding-left: 7px;
+    }
+
+    .checks {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        margin: 10px 0;
+        padding: 9px;
+    }
+
+    .checks label {
+        gap: 6px;
+        font-size: 0.76rem;
+    }
+
+    #directory-list {
+        max-height: 130px;
+        margin-top: 8px;
+    }
+
+    .entry {
+        min-height: 29px;
+        padding: 5px 7px;
+        font-size: 0.76rem;
+    }
+
+    .selected-files {
+        gap: 4px;
+        margin: 7px 0;
+    }
+
+    .selected-file {
+        gap: 6px;
+        padding: 5px 7px;
+    }
+
+    .selected-file span {
+        font-size: 0.72rem;
+    }
+
+    .terminal-panel {
+        margin-top: 10px;
+    }
+
+    .terminal-heading {
+        gap: 6px;
+    }
+
+    .terminal-heading h2 {
+        margin-bottom: 10px;
+        font-size: 0.88rem;
+    }
+
+    .terminal-actions {
+        gap: 4px;
+        margin-bottom: 10px;
+    }
+
+    .terminal-actions button {
+        min-height: 27px;
+        padding: 4px 6px;
+        font-size: 0.66rem;
+    }
+
+    .session-state {
+        padding: 2px 6px;
+        font-size: 0.6rem;
+    }
+
+    .terminal-layout {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .prompt-editor {
+        padding: 10px;
+        border-radius: 9px;
+    }
+
+    .prompt-actions {
+        margin-top: 6px;
+    }
+
+    .prompt-actions button {
+        max-width: 100%;
+        min-height: 30px;
+        padding: 5px 8px;
+        font-size: 0.7rem;
+    }
+
+    .token-rail {
+        display: grid;
+        min-height: 0;
+        grid-template-columns: repeat(4, auto);
+        justify-content: space-between;
+        gap: 5px;
+        padding: 7px;
+        font-size: 0.62rem;
+    }
+
+    .token-rail strong {
+        font-size: 0.9rem;
+    }
+
+    .token-breakdown {
+        display: flex;
+        gap: 6px;
+        margin-top: 0;
+        font-size: 0.62rem;
+    }
+
+    .terminal-dot {
+        width: 7px;
+        height: 7px;
+        margin-bottom: 10px;
+    }
+
+    #output {
+        max-height: 180px;
+        margin: 0;
+        padding: 8px;
+        overflow: auto;
+        font-size: 0.68rem;
+    }
 }
 
 .token-rail {

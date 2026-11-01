@@ -404,3 +404,11 @@ FodyWeavers.xsd
 node_modules/
 dist/
 build/
+
+# Local environment and generated extension packages
+.env
+.env.*
+!.env.example
+*.vsix
+*.pem
+*.key

@@ -1,6 +1,6 @@
-# Aider UI
+# Aider Wrapper
 
-Aider UI is a local web interface for interacting with the Aider tool. It provides functionalities such as handling JSON responses, streaming events, and managing sessions.
+Aider Wrapper is a local web interface and VS Code extension for interacting with the Aider tool. It provides model configuration, directory browsing, streaming output, and reusable Aider sessions.
 
 ![Aider UI screenshot](assets/aider-ui.png)
 
@@ -13,7 +13,7 @@ Aider UI is a local web interface for interacting with the Aider tool. It provid
 - **Directory Resolution**: Resolve directories and their contents.
 - **Token Normalization**: Normalize tokens for better management.
 
-## Usage
+## Browser usage
 
 1. Clone the repository:
    ```bash
@@ -34,6 +34,20 @@ Aider UI is a local web interface for interacting with the Aider tool. It provid
    ```bash
    python backend/run_Aider.py
    ```
+
+## VS Code extension
+
+1. Build the bundled webview:
+   ```bash
+   npm install
+   npm run build
+   ```
+2. Open this folder in VS Code and press `F5` to launch an Extension Development Host.
+3. Click the **Aider Wrapper** icon in the Activity Bar. The Aider panel opens in the side panel.
+
+You can also run **Aider Wrapper: Open** from the Command Palette.
+
+The extension starts the Python backend on a private localhost port and hosts the built React UI in a VS Code webview. Set `aiderWrapper.pythonPath` if `python` is not on your PATH.
 
 ## Contributing
 

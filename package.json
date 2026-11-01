@@ -1,12 +1,67 @@
 {
   "name": "vite-react-aider",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.1",
+  "private": false,
+  "publisher": "aider-wrapper",
+  "displayName": "Local LLMer",
+  "description": "Aider launcher for VS Code and the browser",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jack-Keogh/Aider-Wrapper.git"
+  },
+  "main": "./extension.js",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:aiderWrapper.open",
+    "onView:aiderWrapper.view"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiderWrapper",
+          "title": "Local LLMer",
+          "icon": "resources/aider-hooded.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiderWrapper": [
+        {
+          "id": "aiderWrapper.view",
+          "name": "Aider",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aiderWrapper.open",
+        "title": "Aider Wrapper: Open"
+      }
+    ],
+    "configuration": {
+      "title": "Aider Wrapper",
+      "properties": {
+        "aiderWrapper.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Python executable used to run the Aider Wrapper backend."
+        }
+      }
+    }
+  },
   "scripts": {
     "dev": "python backend/run_Aider.py --dev",
     "build": "vite build",
     "serve": "vite preview",
-    "start": "python backend/run_Aider.py"
+    "start": "python backend/run_Aider.py",
+    "package": "npm run build"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -1,3 +1,5 @@
+import {AccordionSection} from './AccordionSection.jsx';
+
 const flags = [
     ['yes_always', 'Auto-confirm changes'],
     ['no_auto_commits', 'Disable auto commits'],
@@ -14,7 +16,7 @@ export function RequestPanel({request, onChange, isOpen, onToggle}) {
             <AccordionSection
                 id="request"
                 title="Request"
-                summary="Configure Aider options"
+                summary="Configure Handler options"
                 isOpen={isOpen}
                 onToggle={onToggle}
             >
@@ -41,4 +43,3 @@ export function RequestPanel({request, onChange, isOpen, onToggle}) {
         </>
     );
 }
-import {AccordionSection} from './AccordionSection.jsx';

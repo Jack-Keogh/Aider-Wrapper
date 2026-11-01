@@ -86,7 +86,7 @@ export function App() {
             if (event.event === 'session_ready') {
                 setSessionActive(true);
                 setSessionStarting(false);
-                setStatus({message: 'Aider session ready', tone: 'success'});
+                setStatus({message: 'LLM session ready', tone: 'success'});
             }
             if (event.event === 'session_ended') {
                 setSessionActive(false);
@@ -118,7 +118,7 @@ export function App() {
     }
 
     async function handleRun() {
-        setStatus({message: 'Running Aider...', tone: ''});
+        setStatus({message: 'Running LLM...', tone: ''});
         try {
             const config = {
                 directory,
@@ -134,13 +134,13 @@ export function App() {
             if (!sessionActive) {
                 setSessionStarting(true);
                 await startSession(config);
-                setStatus({message: 'Warming up Aider session...', tone: ''});
+                setStatus({message: 'Warming up LLM session...', tone: ''});
                 return false;
             }
             setPromptProcessing(true);
             await sendPrompt(request.prompt);
             setRequest((current) => ({...current, prompt: ''}));
-            setStatus({message: 'Prompt sent to Aider session', tone: 'success'});
+            setStatus({message: 'Prompt sent to LLM session', tone: 'success'});
             return true;
         } catch (error) {
             setSessionStarting(false);
@@ -156,7 +156,7 @@ export function App() {
             setSessionActive(false);
             setSessionStarting(false);
             setPromptProcessing(false);
-            setStatus({message: 'Aider session stopped', tone: 'success'});
+            setStatus({message: 'LLM session stopped', tone: 'success'});
         } catch (error) {
             setStatus({message: error.message, tone: 'error'});
         }
@@ -164,7 +164,7 @@ export function App() {
 
     return (
         <>
-            <h1>Aider Launcher</h1>
+            <h1>Local LLMer</h1>
             <StatusMessage {...status} />
             <div className="accordion-stack">
                 <DirectoryBrowser

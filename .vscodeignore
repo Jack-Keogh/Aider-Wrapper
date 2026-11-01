@@ -1,0 +1,12 @@
+node_modules/
+frontend/
+assets/
+vite.config.js
+*.log
+.git/
+.gitignore
+**/.aider*
+.aider.tags.cache.v4/**
+.aider.input.history
+**/__pycache__/**
+**/*.pyc

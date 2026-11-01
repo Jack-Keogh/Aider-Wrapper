@@ -241,6 +241,7 @@ def build_aider_command(data):
         raise ValueError('Select an LM Studio model before running Aider')
 
     command = ['aider', '--model', model]
+    command.extend(['--chat-language', 'en'])
     if base_url:
         command.extend(['--openai-api-base', base_url])
     for flag in (
@@ -430,6 +431,16 @@ class RequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DIST_DIR), **kwargs)
 
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
+
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == '/api/session/stream':
@@ -562,7 +573,8 @@ def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler, dev=Fals
             f'{bind_host!r} and using {DEFAULT_BIND_HOST}'
         )
         bind_host = DEFAULT_BIND_HOST
-    httpd = server_class((bind_host, 8000), handler_class)
+    port = int(os.environ.get('WBOARD_PORT', '8000'))
+    httpd = server_class((bind_host, port), handler_class)
     vite_process = None
     if dev:
         vite_command = PROJECT_ROOT / 'node_modules' / '.bin' / (
@@ -577,8 +589,9 @@ def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler, dev=Fals
         print('Starting Aider launcher in development mode at http://localhost:5173')
         webbrowser.open(f'http://localhost:5173/index.html?dev={time.time_ns()}')
     else:
-        print(f'Starting Aider launcher at http://{bind_host}:8000')
-        webbrowser.open('http://localhost:8000')
+        print(f'Starting Aider launcher at http://{bind_host}:{port}')
+        if os.environ.get('WBOARD_NO_BROWSER', '').strip().lower() not in {'1', 'true', 'yes'}:
+            webbrowser.open(f'http://localhost:{port}')
     try:
         httpd.serve_forever()
     finally:
@@ -590,7 +603,7 @@ if __name__ == '__main__':
     os.environ.setdefault('PYTHONUTF8', '1')
     os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
     dev_mode = '--dev' in os.sys.argv
-    if not dev_mode:
+    if not dev_mode and os.environ.get('WBOARD_SKIP_BUILD', '').strip().lower() not in {'1', 'true', 'yes'}:
         DIST_DIR.mkdir(exist_ok=True)
         npm_command = 'npm.cmd' if os.name == 'nt' else 'npm'
         subprocess.run([npm_command, 'run', 'build'], cwd=PROJECT_ROOT, check=True)

@@ -32,7 +32,7 @@ export function PromptEditor({
             <textarea
                 id="prompt"
                 value={value}
-                placeholder={promptSent ? lastPrompt : 'Describe the change or task for Aider'}
+                placeholder={promptSent ? lastPrompt : 'Describe the change or task for the LLM'}
                 onChange={handleInputChange}
                 style={{ opacity: promptSent ? 0.5 : 1 }}
             />

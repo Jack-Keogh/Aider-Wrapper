@@ -1,5 +1,7 @@
+const API_BASE = window.__AIDER_API_BASE__ || '';
+
 async function requestJson(url, options) {
-    const response = await fetch(url, options);
+    const response = await fetch(`${API_BASE}${url}`, options);
     const data = await response.json();
     if (!response.ok) {
         throw new Error(data.error || 'The request failed');
@@ -16,7 +18,7 @@ export function browseDirectory(path) {
 }
 
 export async function streamAider(payload, onEvent) {
-    const response = await fetch('/api/run', {
+    const response = await fetch(`${API_BASE}/api/run`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
@@ -63,7 +65,7 @@ export function stopSession() {
 }
 
 export function subscribeToSession(onEvent, onError) {
-    const source = new EventSource('/api/session/stream');
+    const source = new EventSource(`${API_BASE}/api/session/stream`);
     source.onmessage = (message) => onEvent(JSON.parse(message.data));
     source.onerror = onError;
     return () => source.close();
